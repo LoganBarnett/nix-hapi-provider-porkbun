@@ -1,4 +1,5 @@
 use nix_hapi_lib::field_value::FieldValue;
+use nix_hapi_lib::jq_expr::JqExpr;
 use nix_hapi_lib::meta::NixHapiMeta;
 use nix_hapi_lib::plan::{FieldDiff, ResourceChange, RunbookStep};
 use nix_hapi_lib::provider::ProviderError;
@@ -372,12 +373,17 @@ fn make_step(
 }
 
 fn compile_ignore_patterns(
-  patterns: &[String],
+  patterns: &[JqExpr],
 ) -> Result<Vec<Regex>, ProviderError> {
   patterns
     .iter()
-    .map(|p| {
-      Regex::new(p).map_err(|e| {
+    .map(|jq| {
+      let p = jq.resolve().map_err(|e| {
+        ProviderError::OperationFailed(format!(
+          "Failed to resolve ignore expression: {e}"
+        ))
+      })?;
+      Regex::new(&p).map_err(|e| {
         ProviderError::OperationFailed(format!(
           "Invalid ignore pattern {p:?}: {e}"
         ))

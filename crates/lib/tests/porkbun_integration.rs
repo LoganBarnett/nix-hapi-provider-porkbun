@@ -1,4 +1,5 @@
 use nix_hapi_lib::field_value::ResolvedFieldValue;
+use nix_hapi_lib::jq_expr::JqExpr;
 use nix_hapi_lib::meta::NixHapiMeta;
 use nix_hapi_lib::plan::ResourceChange;
 use nix_hapi_lib::provider::{Provider, ResolvedConfig};
@@ -27,7 +28,10 @@ fn meta_default() -> NixHapiMeta {
 
 fn meta_with_ignore(patterns: &[&str]) -> NixHapiMeta {
   NixHapiMeta {
-    ignore: patterns.iter().map(|s| s.to_string()).collect(),
+    ignore: patterns
+      .iter()
+      .map(|s| JqExpr::Inline(s.to_string()))
+      .collect(),
     ..Default::default()
   }
 }
