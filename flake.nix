@@ -156,5 +156,7 @@
         program = "${self.packages.${system}.${key}}/bin/${crate.binary}";
       })
       workspaceCrates);
+
+    lib = import ./nix/lib/default.nix;
   };
 }
