@@ -25,10 +25,12 @@ in {
     {
       __nixhapi =
         {
-          type = "porkbun";
-          domain = ensureManaged domain;
-          api_key = ensureManaged api_key;
-          secret_api_key = ensureManaged secret_api_key;
+          provider = {
+            type = "porkbun";
+            domain = ensureManaged domain;
+            api_key = ensureManaged api_key;
+            secret_api_key = ensureManaged secret_api_key;
+          };
         }
         // (
           if ignore != []
