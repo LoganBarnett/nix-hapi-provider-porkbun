@@ -1,0 +1,167 @@
+#+title:     nix-hapi-provider-porkbun Tasks
+#+author:    Logan Barnett
+#+date:      <2026-03-28 Fri>
+#+language:  en
+
+* Overview
+
+This project implements a [[https://porkbun.com][Porkbun]] DNS provider for [[https://github.com/LoganBarnett/nix-hapi][nix-hapi]] — a declarative,
+stateless reconciler for external service APIs.
+
+The provider runs as a JSON-RPC subprocess (same pattern as
+=nix-hapi-fake=) and implements the =Provider= trait from =nix-hapi-lib=.
+It reconciles DNS records declared as Nix expressions against the live
+state returned by the Porkbun API.
+
+Reference implementations:
+- Provider trait: =nix-hapi/crates/lib/src/provider.rs=
+- Fake provider: =nix-hapi/crates/fake/src/lib.rs=
+- Integration tests: =nix-hapi/crates/fake/tests/=
+
+* Tasks
+
+** TODO Prune parts of the template we don't need
+
+The template ships with CLI and web scaffolding that doesn't apply to a
+provider binary.  Remove or strip down the boilerplate:
+
+- Remove the staged-config / environment-variable config system from
+  =crates/cli= (providers receive config via the nix-hapi JSON-RPC
+  protocol, not from CLI args or config files).
+- Remove =config.example.toml= if it won't be used.
+- Remove =GETTING_STARTED.md= and =CUSTOMIZING.md= (template meta-docs).
+- Strip placeholder business logic from =crates/cli/src/main.rs=.
+- Decide whether to rename =crates/cli= → =crates/provider= (or similar)
+  to better reflect its role as the subprocess entry point.
+- Remove or gut =crates/lib/src/error.rs= placeholder variants that don't
+  apply.
+
+** TODO Update workspace metadata
+
+Post-generation steps from =rust-template= README.org:
+
+- Set correct =authors=, =license=, and =repository= in
+  =Cargo.toml= =[workspace.package]=.
+- Update =flake.nix= =description= and =workspaceCrates= descriptions.
+- Replace generated =README.org= content with a project description.
+
+** TODO Add nix-hapi-lib as a dependency
+
+Wire up the =nix-hapi= library crate so we can implement the =Provider=
+trait:
+
+- Add =nix-hapi-lib= to the workspace =Cargo.toml= using the GitHub repo
+  (=https://github.com/LoganBarnett/nix-hapi=) as a git dependency.
+- Import =Provider=, =ProviderError=, =ProviderPlan=, =ApplyReport=,
+  =ResolvedConfig=, and related types in the lib crate.
+- Add =provider_host::run= to =crates/cli/src/main.rs= (mirroring
+  =nix-hapi/crates/fake/src/main.rs=).
+
+** TODO Implement PorkbunProvider skeleton
+
+Create =crates/lib/src/provider.rs= (or similar) with a =PorkbunProvider=
+struct that implements the =nix-hapi-lib= =Provider= trait:
+
+- =provider_type()= returns ="porkbun"=.
+- =sensitive_config_fields()= returns =["api_key", "secret_api_key"]=.
+- =list_live()= — stub returning empty for now.
+- =plan()= — stub returning an empty plan.
+- =apply()= — stub returning an empty report.
+
+This gets the project compiling end-to-end before any real API work.
+
+** TODO Implement Porkbun API client
+
+Implement a thin async/blocking HTTP client for the Porkbun API:
+
+- Add =reqwest= (blocking feature) or similar HTTP crate.
+- Endpoints needed:
+  - =POST /dns/retrieve/{domain}= — list all DNS records for a domain.
+  - =POST /dns/create/{domain}= — create a DNS record.
+  - =POST /dns/edit/{domain}/{id}= — update a DNS record.
+  - =POST /dns/delete/{domain}/{id}= — delete a DNS record.
+- Model =PorkbunRecord= struct matching the API response shape.
+- Authenticate with =apikey= / =secretapikey= from =ResolvedConfig=.
+
+** TODO Implement list_live
+
+Implement =PorkbunProvider::list_live= to query the Porkbun API and return
+live DNS records as a =serde_json::Value=:
+
+- Parse the domain from =filters= or config.
+- Call the retrieve endpoint; deserialise the record list.
+- Return a JSON object keyed by some stable record identifier (e.g.
+  ="<type>/<name>"= or the numeric Porkbun record ID).
+
+** TODO Implement plan
+
+Implement =PorkbunProvider::plan= to diff desired state against live:
+
+- Walk desired records; emit =Add= for records absent from live.
+- Walk live records; emit =Destroy= for records absent from desired and
+  not matching any =__nixhapi.ignore= pattern.
+- For records present in both, compare fields and emit =Modify= if they
+  differ.
+- Respect =mkManaged= / =mkInitial= / =mkUnmanaged= markers from
+  =nix-hapi-lib=.
+
+** TODO Implement apply
+
+Implement =PorkbunProvider::apply= to execute a =ProviderPlan=:
+
+- Iterate the plan's change list.
+- For =Add= → call create endpoint.
+- For =Modify= → call edit endpoint with the record's Porkbun ID.
+- For =Destroy= → call delete endpoint.
+- Collect errors and surface them as =ProviderError= variants.
+
+** TODO Write integration tests
+
+Integration tests should mirror the style used in
+=nix-hapi/crates/fake/tests/= but exercise Porkbun-specific behaviour.
+Tests should use a test-double or recorded HTTP responses (e.g. =wiremock=
+or hand-rolled mock server) rather than hitting the live API.
+
+Suggested test cases:
+
+- =creates_missing_record= — desired has a record, live is empty; plan
+  contains one =Add=; apply calls create endpoint.
+- =deletes_orphan_record= — live has a record not in desired; plan
+  contains one =Destroy=; apply calls delete endpoint.
+- =modifies_changed_record= — desired and live have same key but differing
+  TTL or content; plan contains one =Modify=; apply calls edit endpoint.
+- =no_op_when_already_converged= — desired and live match exactly; plan is
+  empty; apply makes no HTTP calls.
+- =ignores_exempt_records= — records matching =__nixhapi.ignore= patterns
+  are not in the destroy list.
+- =mkunmanaged_fields_skipped= — fields marked =mkUnmanaged= are not
+  compared and do not generate =Modify= changes.
+- =mkinitial_fields_not_overwritten= — fields marked =mkInitial= that
+  already exist in live are not modified.
+- =sensitive_fields_scrubbed_from_plan_output= — plan output does not
+  contain raw =api_key= or =secret_api_key= values.
+
+** TODO Wire up the Gitea remote
+
+Create the remote repository on =gitea.proton= via =tea=:
+
+#+begin_src sh :exports code
+tea repo create --name nix-hapi-provider-porkbun --description "Porkbun DNS provider for nix-hapi"
+git remote add origin ssh://git@gitea.proton:2222/$USER/nix-hapi-provider-porkbun.git
+git push -u origin main
+#+end_src
+
+** TODO Initial commit and direnv setup
+
+#+begin_src sh :exports code
+git add .
+git commit -m "Initial commit from rust-template"
+direnv allow
+#+end_src
+
+Then verify the build and tests pass:
+
+#+begin_src sh :exports code
+nix develop --command cargo build --workspace
+nix develop --command cargo test --workspace
+#+end_src
