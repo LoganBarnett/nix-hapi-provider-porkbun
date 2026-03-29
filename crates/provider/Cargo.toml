@@ -12,6 +12,7 @@ name = "nix-hapi-provider-porkbun"
 path = "src/main.rs"
 
 [dependencies]
+nix-hapi-lib = { workspace = true }
 nix-hapi-provider-porkbun-lib = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
