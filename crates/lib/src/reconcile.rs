@@ -1,10 +1,11 @@
+use nix_hapi_lib::dag::eval_jq_first;
 use nix_hapi_lib::field_value::FieldValue;
 use nix_hapi_lib::jq_expr::JqExpr;
 use nix_hapi_lib::meta::NixHapiMeta;
 use nix_hapi_lib::plan::{FieldDiff, ResourceChange, RunbookStep};
 use nix_hapi_lib::provider::ProviderError;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::collections::HashMap;
 
 // The domain-relative record name used for apex records (name == domain).
@@ -112,7 +113,7 @@ pub fn diff(
     serde_json::from_value(live.clone())
       .map_err(|e| ProviderError::LiveStateParse(e.to_string()))?;
 
-  let ignore_patterns = compile_ignore_patterns(&meta.ignore)?;
+  let ignore_patterns = resolve_ignore_exprs(&meta.ignore)?;
 
   let mut changes = Vec::new();
   let mut steps = Vec::new();
@@ -372,26 +373,38 @@ fn make_step(
     .map_err(|e| ProviderError::OperationFailed(e.to_string()))
 }
 
-fn compile_ignore_patterns(
-  patterns: &[JqExpr],
-) -> Result<Vec<Regex>, ProviderError> {
-  patterns
+fn resolve_ignore_exprs(
+  exprs: &[JqExpr],
+) -> Result<Vec<String>, ProviderError> {
+  exprs
     .iter()
     .map(|jq| {
-      let p = jq.resolve().map_err(|e| {
+      jq.resolve().map_err(|e| {
         ProviderError::OperationFailed(format!(
           "Failed to resolve ignore expression: {e}"
-        ))
-      })?;
-      Regex::new(&p).map_err(|e| {
-        ProviderError::OperationFailed(format!(
-          "Invalid ignore pattern {p:?}: {e}"
         ))
       })
     })
     .collect()
 }
 
-fn is_ignored(key: &str, patterns: &[Regex]) -> bool {
-  patterns.iter().any(|re| re.is_match(key))
+/// Evaluates ignore expressions against a record key.  Each expression
+/// receives `.` as `{"key": "<type>/<name>", "resource_id": "<type>/<name>"}`.
+/// A truthy result exempts the record from deletion.
+fn is_ignored(key: &str, exprs: &[String]) -> bool {
+  exprs.iter().any(|expr| {
+    let input = json!({"key": key, "resource_id": key});
+    match eval_jq_first("(ignore)", expr, input) {
+      Ok(result) => is_truthy(&result),
+      Err(_) => false,
+    }
+  })
+}
+
+fn is_truthy(v: &serde_json::Value) -> bool {
+  match v {
+    serde_json::Value::Null => false,
+    serde_json::Value::Bool(b) => *b,
+    _ => true,
+  }
 }

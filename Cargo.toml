@@ -33,9 +33,6 @@ thiserror = "2.0"
 # HTTP client for Porkbun API calls
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 
-# Pattern matching for __nixhapi.ignore
-regex = "1"
-
 # Testing — mock HTTP server for integration tests
 mockito = "1"
 
