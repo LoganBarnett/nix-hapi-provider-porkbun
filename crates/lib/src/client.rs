@@ -2,7 +2,7 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-const BASE_URL: &str = "https://api.porkbun.com/api/json/v3";
+pub const PRODUCTION_BASE_URL: &str = "https://api.porkbun.com/api/json/v3";
 
 #[derive(Debug, Error)]
 pub enum PorkbunClientError {
@@ -53,16 +53,22 @@ struct StatusResponse {
 pub struct PorkbunClient {
   http: Client,
   auth: Auth,
+  base_url: String,
 }
 
 impl PorkbunClient {
-  pub fn new(api_key: String, secret_api_key: String) -> Self {
+  pub fn new(
+    api_key: String,
+    secret_api_key: String,
+    base_url: String,
+  ) -> Self {
     Self {
       http: Client::new(),
       auth: Auth {
         apikey: api_key,
         secretapikey: secret_api_key,
       },
+      base_url,
     }
   }
 
@@ -71,7 +77,7 @@ impl PorkbunClient {
     &self,
     domain: &str,
   ) -> Result<Vec<PorkbunRecord>, PorkbunClientError> {
-    let url = format!("{BASE_URL}/dns/retrieve/{domain}");
+    let url = format!("{}/dns/retrieve/{domain}", self.base_url);
     let resp: RetrieveResponse =
       self.http.post(&url).json(&self.auth).send()?.json()?;
     if resp.status != "SUCCESS" {
@@ -89,7 +95,7 @@ impl PorkbunClient {
     domain: &str,
     record: &RecordRequest,
   ) -> Result<(), PorkbunClientError> {
-    let url = format!("{BASE_URL}/dns/create/{domain}");
+    let url = format!("{}/dns/create/{domain}", self.base_url);
     let body = AuthedRequest {
       auth: &self.auth,
       record,
@@ -106,7 +112,7 @@ impl PorkbunClient {
     id: &str,
     record: &RecordRequest,
   ) -> Result<(), PorkbunClientError> {
-    let url = format!("{BASE_URL}/dns/edit/{domain}/{id}");
+    let url = format!("{}/dns/edit/{domain}/{id}", self.base_url);
     let body = AuthedRequest {
       auth: &self.auth,
       record,
@@ -122,7 +128,7 @@ impl PorkbunClient {
     domain: &str,
     id: &str,
   ) -> Result<(), PorkbunClientError> {
-    let url = format!("{BASE_URL}/dns/delete/{domain}/{id}");
+    let url = format!("{}/dns/delete/{domain}/{id}", self.base_url);
     let resp: StatusResponse =
       self.http.post(&url).json(&self.auth).send()?.json()?;
     check_status(resp, url)

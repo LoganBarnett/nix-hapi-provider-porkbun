@@ -19,3 +19,5 @@ regex = { workspace = true }
 
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }
+mockito = { workspace = true }
+nix-hapi-lib = { workspace = true }

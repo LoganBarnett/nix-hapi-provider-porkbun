@@ -25,8 +25,11 @@ impl Provider for PorkbunProvider {
     _filters: &[Filter],
   ) -> Result<serde_json::Value, ProviderError> {
     let pb_config = PorkbunConfig::from_resolved_config(config)?;
-    let client =
-      PorkbunClient::new(pb_config.api_key, pb_config.secret_api_key);
+    let client = PorkbunClient::new(
+      pb_config.api_key,
+      pb_config.secret_api_key,
+      pb_config.base_url,
+    );
 
     let records = client.retrieve(&pb_config.domain).map_err(|e| {
       ProviderError::ConnectionFailed(format!(
@@ -83,8 +86,11 @@ impl Provider for PorkbunProvider {
     config: &ResolvedConfig,
   ) -> Result<ApplyReport, ProviderError> {
     let pb_config = PorkbunConfig::from_resolved_config(config)?;
-    let client =
-      PorkbunClient::new(pb_config.api_key, pb_config.secret_api_key);
+    let client = PorkbunClient::new(
+      pb_config.api_key,
+      pb_config.secret_api_key,
+      pb_config.base_url,
+    );
     let mut report = ApplyReport::default();
 
     for step in &plan.runbook {
