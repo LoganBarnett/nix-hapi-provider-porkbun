@@ -24,32 +24,16 @@
         overlays = overlays;
       };
 
-    # ============================================================================
-    # WORKSPACE CRATES CONFIGURATION
-    # ============================================================================
-    # Define all workspace crates here. This makes it easy to:
-    # - Generate packages
-    # - Generate apps
-    # - Generate overlays
-    # - Keep package lists consistent across the flake
-    #
-    # When customizing this template for your project:
-    # 1. Update the names below to match your project
-    # 2. Add/remove crates as needed
-    # 3. The package and app generation will automatically update
-    # ============================================================================
+    # Each entry becomes a Nix package and app.  The 'lib' crate is omitted
+    # because it produces no binary.
     workspaceCrates = {
-      # CRATE:cli:begin
-      # CLI application
-      cli = {
-        name = "nix-hapi-provider-porkbun-cli";
-        binary = "nix-hapi-provider-porkbun-cli";
-        description = "CLI application";
+      # The provider binary is the JSON-RPC subprocess entry point consumed
+      # by nix-hapi.
+      provider = {
+        name = "nix-hapi-provider-porkbun";
+        binary = "nix-hapi-provider-porkbun";
+        description = "Porkbun DNS provider binary for nix-hapi";
       };
-      # CRATE:cli:end
-
-      # Note: The 'lib' crate is not included here as it doesn't produce a
-      # binary.
     };
 
     # Development shell packages.
@@ -69,14 +53,9 @@
       pkgs.pkg-config
       pkgs.openssl
       pkgs.jq
-      # Elm toolchain
-      pkgs.elmPackages.elm
-      pkgs.elmPackages.elm-format
-      pkgs.elm2nix
       # Unified formatter
       pkgs.treefmt
       pkgs.alejandra
-      pkgs.prettier
     ];
   in {
     devShells = forAllSystems (system: let
@@ -85,23 +64,13 @@
       default = pkgs.mkShell {
         buildInputs = devPackages pkgs;
         shellHook = ''
-          echo "Rust Template development environment"
+          echo "nix-hapi-provider-porkbun development environment"
           echo ""
           echo "Available Cargo packages (use 'cargo build -p <name>'):"
           cargo metadata --no-deps --format-version 1 2>/dev/null | \
             jq -r '.packages[].name' | \
             sort | \
             sed 's/^/  • /' || echo "  Run 'cargo init' to get started"
-
-          echo ""
-          echo "Elm frontend (frontend/):"
-          echo "  Build:   cd frontend && elm make src/Main.elm --output public/elm.js"
-          echo "  Format:  treefmt"
-          echo "  After changing elm.json dependency versions, regenerate Nix files:"
-          echo "    cd frontend"
-          echo "    elm2nix convert 2>/dev/null > elm-srcs.nix"
-          echo "    elm2nix snapshot"
-          echo "    git add elm-srcs.nix registry.dat && git commit"
 
           # Symlink cargo-husky hooks into .git/hooks/ using paths relative
           # to .git/hooks/ so the repo stays valid after moves or copies.
@@ -144,9 +113,10 @@
         nativeBuildInputs = with pkgs; [
           pkg-config
         ];
-        # Run only unit tests (--lib --bins), skip integration tests in tests/ directories
-        # Integration tests may require external services not available in Nix sandbox
-        # Full test suite can be run locally with 'cargo test --all'
+        # Run only unit tests (--lib --bins), skip integration tests in tests/
+        # directories.  Integration tests may require external services not
+        # available in the Nix sandbox; run the full suite locally with
+        # 'cargo test --all'.
         cargoTestExtraArgs = "--lib --bins";
       };
 
@@ -172,8 +142,6 @@
     in
       cratePackages
       // {
-        # Build all workspace binaries together.
-        # Update pname to match your project name.
         default = craneLib.buildPackage (commonArgs // {pname = "nix-hapi-provider-porkbun";});
       });
 
@@ -188,23 +156,5 @@
         program = "${self.packages.${system}.${key}}/bin/${crate.binary}";
       })
       workspaceCrates);
-
-    # ============================================================================
-    # NIXOS MODULES
-    # ============================================================================
-    nixosModules = {
-      web = import ./nix/modules/web.nix {inherit self;};
-      default = self.nixosModules.web;
-    };
-
-    # ============================================================================
-    # OVERLAYS
-    # ============================================================================
-    # Uncomment to expose your packages as an overlay
-    # ============================================================================
-    # overlays.default = final: prev:
-    #   pkgs.lib.mapAttrs' (key: crate:
-    #     pkgs.lib.nameValuePair crate.name self.packages.${final.stdenv.hostPlatform.system}.${key}
-    #   ) workspaceCrates;
   };
 }

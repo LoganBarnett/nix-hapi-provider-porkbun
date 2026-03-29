@@ -1,3 +1,1 @@
-pub mod logging;
-
-pub use logging::{LogFormat, LogLevel};
+// Provider library — core types and logic for nix-hapi-provider-porkbun.
