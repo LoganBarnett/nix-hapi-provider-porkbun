@@ -20,7 +20,7 @@ Reference implementations:
 
 * Tasks
 
-** TODO Prune parts of the template we don't need
+** DONE Prune parts of the template we don't need
 
 The template ships with CLI and web scaffolding that doesn't apply to a
 provider binary.  Remove or strip down the boilerplate:
@@ -36,7 +36,7 @@ provider binary.  Remove or strip down the boilerplate:
 - Remove or gut =crates/lib/src/error.rs= placeholder variants that don't
   apply.
 
-** TODO Update workspace metadata
+** DONE Update workspace metadata
 
 Post-generation steps from =rust-template= README.org:
 
@@ -45,7 +45,7 @@ Post-generation steps from =rust-template= README.org:
 - Update =flake.nix= =description= and =workspaceCrates= descriptions.
 - Replace generated =README.org= content with a project description.
 
-** TODO Add nix-hapi-lib as a dependency
+** DONE Add nix-hapi-lib as a dependency
 
 Wire up the =nix-hapi= library crate so we can implement the =Provider=
 trait:
@@ -54,10 +54,10 @@ trait:
   (=https://github.com/LoganBarnett/nix-hapi=) as a git dependency.
 - Import =Provider=, =ProviderError=, =ProviderPlan=, =ApplyReport=,
   =ResolvedConfig=, and related types in the lib crate.
-- Add =provider_host::run= to =crates/cli/src/main.rs= (mirroring
+- Add =provider_host::run= to =crates/provider/src/main.rs= (mirroring
   =nix-hapi/crates/fake/src/main.rs=).
 
-** TODO Implement PorkbunProvider skeleton
+** DONE Implement PorkbunProvider skeleton
 
 Create =crates/lib/src/provider.rs= (or similar) with a =PorkbunProvider=
 struct that implements the =nix-hapi-lib= =Provider= trait:
@@ -70,7 +70,7 @@ struct that implements the =nix-hapi-lib= =Provider= trait:
 
 This gets the project compiling end-to-end before any real API work.
 
-** TODO Implement Porkbun API client
+** DONE Implement Porkbun API client
 
 Implement a thin async/blocking HTTP client for the Porkbun API:
 
@@ -83,7 +83,7 @@ Implement a thin async/blocking HTTP client for the Porkbun API:
 - Model =PorkbunRecord= struct matching the API response shape.
 - Authenticate with =apikey= / =secretapikey= from =ResolvedConfig=.
 
-** TODO Implement list_live
+** DONE Implement list_live
 
 Implement =PorkbunProvider::list_live= to query the Porkbun API and return
 live DNS records as a =serde_json::Value=:
@@ -93,7 +93,7 @@ live DNS records as a =serde_json::Value=:
 - Return a JSON object keyed by some stable record identifier (e.g.
   ="<type>/<name>"= or the numeric Porkbun record ID).
 
-** TODO Implement plan
+** DONE Implement plan
 
 Implement =PorkbunProvider::plan= to diff desired state against live:
 
@@ -105,7 +105,7 @@ Implement =PorkbunProvider::plan= to diff desired state against live:
 - Respect =mkManaged= / =mkInitial= / =mkUnmanaged= markers from
   =nix-hapi-lib=.
 
-** TODO Implement apply
+** DONE Implement apply
 
 Implement =PorkbunProvider::apply= to execute a =ProviderPlan=:
 
@@ -115,7 +115,7 @@ Implement =PorkbunProvider::apply= to execute a =ProviderPlan=:
 - For =Destroy= → call delete endpoint.
 - Collect errors and surface them as =ProviderError= variants.
 
-** TODO Write integration tests
+** DONE Write integration tests
 
 Integration tests should mirror the style used in
 =nix-hapi/crates/fake/tests/= but exercise Porkbun-specific behaviour.
@@ -141,7 +141,7 @@ Suggested test cases:
 - =sensitive_fields_scrubbed_from_plan_output= — plan output does not
   contain raw =api_key= or =secret_api_key= values.
 
-** TODO Wire up the Gitea remote
+** DONE Wire up the Gitea remote
 
 Create the remote repository on =gitea.proton= via =tea=:
 
@@ -151,7 +151,7 @@ git remote add origin ssh://git@gitea.proton:2222/$USER/nix-hapi-provider-porkbu
 git push -u origin main
 #+end_src
 
-** TODO Initial commit and direnv setup
+** DONE Initial commit and direnv setup
 
 #+begin_src sh :exports code
 git add .
