@@ -3,6 +3,7 @@ use crate::config::PorkbunConfig;
 use crate::reconcile::{
   record_key, relative_name, LiveRecord, PorkbunOperation,
 };
+use async_trait::async_trait;
 use nix_hapi_lib::meta::NixHapiMeta;
 use nix_hapi_lib::plan::{ApplyReport, ProviderPlan};
 use nix_hapi_lib::provider::{Filter, Provider, ProviderError, ResolvedConfig};
@@ -10,6 +11,7 @@ use tracing::info;
 
 pub struct PorkbunProvider;
 
+#[async_trait]
 impl Provider for PorkbunProvider {
   fn provider_type(&self) -> &str {
     "porkbun"
@@ -19,7 +21,7 @@ impl Provider for PorkbunProvider {
     &["api_key", "secret_api_key"]
   }
 
-  fn list_live(
+  async fn list_live(
     &self,
     config: &ResolvedConfig,
     _filters: &[Filter],
@@ -31,7 +33,7 @@ impl Provider for PorkbunProvider {
       pb_config.base_url,
     );
 
-    let records = client.retrieve(&pb_config.domain).map_err(|e| {
+    let records = client.retrieve(&pb_config.domain).await.map_err(|e| {
       ProviderError::ConnectionFailed(format!(
         "Failed to retrieve DNS records for {}: {e}",
         pb_config.domain
@@ -60,7 +62,7 @@ impl Provider for PorkbunProvider {
     Ok(serde_json::Value::Object(live))
   }
 
-  fn plan(
+  async fn plan(
     &self,
     desired: &serde_json::Value,
     live: &serde_json::Value,
@@ -80,7 +82,7 @@ impl Provider for PorkbunProvider {
     })
   }
 
-  fn apply(
+  async fn apply(
     &self,
     plan: &ProviderPlan,
     config: &ResolvedConfig,
@@ -124,6 +126,7 @@ impl Provider for PorkbunProvider {
                 prio,
               },
             )
+            .await
             .map_err(|e| {
               ProviderError::OperationFailed(format!(
                 "Failed to create DNS record {key}: {e}"
@@ -155,6 +158,7 @@ impl Provider for PorkbunProvider {
                 prio,
               },
             )
+            .await
             .map_err(|e| {
               ProviderError::OperationFailed(format!(
                 "Failed to edit DNS record {key} (id={id}): {e}"
@@ -171,7 +175,7 @@ impl Provider for PorkbunProvider {
         } => {
           let key = format!("{record_type}/{name}");
           info!(key = %key, id = %id, "Deleting DNS record");
-          client.delete(&domain, &id).map_err(|e| {
+          client.delete(&domain, &id).await.map_err(|e| {
             ProviderError::OperationFailed(format!(
               "Failed to delete DNS record {key} (id={id}): {e}"
             ))

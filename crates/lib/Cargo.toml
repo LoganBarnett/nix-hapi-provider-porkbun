@@ -14,7 +14,9 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 tap = { workspace = true }
-reqwest = { workspace = true, features = ["blocking", "json"] }
+reqwest = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
 
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }

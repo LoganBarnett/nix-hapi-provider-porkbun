@@ -37,6 +37,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-trait"
+version = "0.1.89"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9035ad2d096bed7955a320ee7e2230574d28fd3c3a0f186cbea1ff3c7eed5dbb"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -237,7 +248,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07bbe89c50d7a535e539b8c17bc0b49bdb77747034daa8087407d655f3f7cc1d"
 dependencies = [
  "futures-core",
- "futures-sink",
 ]
 
 [[package]]
@@ -245,12 +255,6 @@ name = "futures-core"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e3450815272ef58cec6d564423f6e755e25379b217b0bc688e295ba24df6b1d"
-
-[[package]]
-name = "futures-io"
-version = "0.3.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cecba35d7ad927e23624b22ad55235f2239cfa44fd10428eecbeba6d6a717718"
 
 [[package]]
 name = "futures-sink"
@@ -271,10 +275,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "389ca41296e6190b48053de0321d02a77f32f8a5d2461dd38762c0593805c6d6"
 dependencies = [
  "futures-core",
- "futures-io",
- "futures-sink",
  "futures-task",
- "memchr",
  "pin-project-lite",
  "slab",
 ]
@@ -833,8 +834,9 @@ dependencies = [
 [[package]]
 name = "nix-hapi-lib"
 version = "0.1.0"
-source = "git+https://github.com/LoganBarnett/nix-hapi#10e294e094fc5086414de6cf17109cb8f3305c6d"
+source = "git+https://github.com/LoganBarnett/nix-hapi#5e992dc228d3c16e4ccfe4270fe2fe8bbde8970a"
 dependencies = [
+ "async-trait",
  "jaq-core",
  "jaq-json",
  "jaq-std",
@@ -842,6 +844,7 @@ dependencies = [
  "serde_json",
  "tap",
  "thiserror",
+ "tokio",
  "tracing",
 ]
 
@@ -853,6 +856,7 @@ dependencies = [
  "nix-hapi-provider-porkbun-lib",
  "tap",
  "thiserror",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]
@@ -861,6 +865,7 @@ dependencies = [
 name = "nix-hapi-provider-porkbun-lib"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "cargo-husky",
  "mockito",
  "nix-hapi-lib",
@@ -869,6 +874,7 @@ dependencies = [
  "serde_json",
  "tap",
  "thiserror",
+ "tokio",
  "tracing",
 ]
 
@@ -1127,9 +1133,7 @@ dependencies = [
  "base64",
  "bytes",
  "encoding_rs",
- "futures-channel",
  "futures-core",
- "futures-util",
  "h2",
  "http",
  "http-body",
@@ -1347,6 +1351,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "signal-hook-registry"
+version = "1.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4db69cba1110affc0e9f7bcd48bbf87b3f4fc7c61fc9155afd4c469eb3d6c1b"
+dependencies = [
+ "errno",
+ "libc",
+]
+
+[[package]]
 name = "similar"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1507,8 +1521,21 @@ dependencies = [
  "mio",
  "parking_lot",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
+ "tokio-macros",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "tokio-macros"
+version = "2.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c55a2eff8b69ce66c84f85e1da1c233edc36ceb85a2058d11b0d6a3c7e7569c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

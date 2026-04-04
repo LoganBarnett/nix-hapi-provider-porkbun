@@ -1,4 +1,4 @@
-use reqwest::blocking::Client;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -49,7 +49,7 @@ struct StatusResponse {
   message: Option<String>,
 }
 
-/// Thin blocking HTTP client wrapping the Porkbun DNS API.
+/// Async HTTP client wrapping the Porkbun DNS API.
 pub struct PorkbunClient {
   http: Client,
   auth: Auth,
@@ -73,13 +73,19 @@ impl PorkbunClient {
   }
 
   /// Retrieves all DNS records for `domain`.
-  pub fn retrieve(
+  pub async fn retrieve(
     &self,
     domain: &str,
   ) -> Result<Vec<PorkbunRecord>, PorkbunClientError> {
     let url = format!("{}/dns/retrieve/{domain}", self.base_url);
-    let resp: RetrieveResponse =
-      self.http.post(&url).json(&self.auth).send()?.json()?;
+    let resp: RetrieveResponse = self
+      .http
+      .post(&url)
+      .json(&self.auth)
+      .send()
+      .await?
+      .json()
+      .await?;
     if resp.status != "SUCCESS" {
       return Err(PorkbunClientError::ApiError {
         endpoint: url,
@@ -90,7 +96,7 @@ impl PorkbunClient {
   }
 
   /// Creates a new DNS record under `domain`.
-  pub fn create(
+  pub async fn create(
     &self,
     domain: &str,
     record: &RecordRequest,
@@ -100,13 +106,19 @@ impl PorkbunClient {
       auth: &self.auth,
       record,
     };
-    let resp: StatusResponse =
-      self.http.post(&url).json(&body).send()?.json()?;
+    let resp: StatusResponse = self
+      .http
+      .post(&url)
+      .json(&body)
+      .send()
+      .await?
+      .json()
+      .await?;
     check_status(resp, url)
   }
 
   /// Edits an existing DNS record identified by `id` under `domain`.
-  pub fn edit(
+  pub async fn edit(
     &self,
     domain: &str,
     id: &str,
@@ -117,20 +129,32 @@ impl PorkbunClient {
       auth: &self.auth,
       record,
     };
-    let resp: StatusResponse =
-      self.http.post(&url).json(&body).send()?.json()?;
+    let resp: StatusResponse = self
+      .http
+      .post(&url)
+      .json(&body)
+      .send()
+      .await?
+      .json()
+      .await?;
     check_status(resp, url)
   }
 
   /// Deletes the DNS record identified by `id` under `domain`.
-  pub fn delete(
+  pub async fn delete(
     &self,
     domain: &str,
     id: &str,
   ) -> Result<(), PorkbunClientError> {
     let url = format!("{}/dns/delete/{domain}/{id}", self.base_url);
-    let resp: StatusResponse =
-      self.http.post(&url).json(&self.auth).send()?.json()?;
+    let resp: StatusResponse = self
+      .http
+      .post(&url)
+      .json(&self.auth)
+      .send()
+      .await?
+      .json()
+      .await?;
     check_status(resp, url)
   }
 }
