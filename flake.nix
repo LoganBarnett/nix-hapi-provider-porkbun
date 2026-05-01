@@ -6,6 +6,10 @@
     nixpkgs.url = "github:NixOS/nixpkgs/25.11";
     rust-overlay.url = "github:oxalica/rust-overlay";
     crane.url = "github:ipetkov/crane";
+    nix-hapi = {
+      url = "github:LoganBarnett/nix-hapi";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -13,6 +17,7 @@
     nixpkgs,
     rust-overlay,
     crane,
+    nix-hapi,
   } @ inputs: let
     forAllSystems = nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed;
     overlays = [
@@ -142,7 +147,11 @@
     in
       cratePackages
       // {
-        default = craneLib.buildPackage (commonArgs // {pname = "nix-hapi-provider-porkbun";});
+        default = craneLib.buildPackage (commonArgs
+          // {
+            pname = "nix-hapi-provider-porkbun";
+            meta.mainProgram = "nix-hapi-provider-porkbun";
+          });
       });
 
     # ============================================================================
@@ -157,6 +166,17 @@
       })
       workspaceCrates);
 
-    lib = import ./nix/lib/default.nix;
+    # NixOS / nix-darwin modules.  Closure over `self` lets the package
+    # default for `services.nix-hapi-porkbun.package` resolve to this
+    # flake's build of the reconciler binary; closure over `nix-hapi.lib`
+    # lets the typed schema reuse the engine's tagged-value type.
+    nixosModules.default = import ./nix/modules/nixos.nix {
+      inherit self;
+      nixHapiLib = nix-hapi.lib;
+    };
+    darwinModules.default = import ./nix/modules/darwin.nix {
+      inherit self;
+      nixHapiLib = nix-hapi.lib;
+    };
   };
 }
