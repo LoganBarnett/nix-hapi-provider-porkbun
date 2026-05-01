@@ -95,18 +95,29 @@
   # expects today: provider config and ignore list tunneled under
   # `__nixhapi`, records spread at the top level of the scope.  The
   # outer attribute key supplies the domain.
+  #
+  # Wire-format details we preserve to avoid rust-side changes:
+  #   * `domain` is wrapped as a managed value (matching the historical
+  #     output of mkPorkbunProvider), not emitted as a bare string.
+  #   * Null ttl / prio are stripped per record, matching the historical
+  #     conditional emission rather than emitting explicit nulls.
+  recordToJson = record:
+    lib.filterAttrs (_: v: v != null) {
+      inherit (record) content ttl prio;
+    };
+
   scopeToTree = domain: scope:
     {
       __nixhapi = {
         provider = {
           type = "porkbun";
-          inherit domain;
+          domain = nixHapiLib.mkManaged domain;
           inherit (scope.provider) api_key secret_api_key;
         };
         ignore = scope.ignore;
       };
     }
-    // scope.records;
+    // (lib.mapAttrs (_: recordToJson) scope.records);
 in {
   options.services.nix-hapi-porkbun = {
     enable = lib.mkEnableOption "Porkbun DNS reconciler via nix-hapi";
