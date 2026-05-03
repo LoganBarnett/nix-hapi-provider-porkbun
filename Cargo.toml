@@ -10,7 +10,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Logan Barnett <logustus@gmail.com>"]
 license = "AGPL-3.0-or-later"
-repository = "https://gitea.proton/logan/nix-hapi-provider-porkbun"
+repository = "https://github.com/LoganBarnett/nix-hapi-provider-porkbun"
 
 [workspace.dependencies]
 # Logging and tracing

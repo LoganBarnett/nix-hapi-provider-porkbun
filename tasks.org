@@ -141,13 +141,12 @@ Suggested test cases:
 - =sensitive_fields_scrubbed_from_plan_output= — plan output does not
   contain raw =api_key= or =secret_api_key= values.
 
-** DONE Wire up the Gitea remote
+** DONE Wire up the git remote
 
-Create the remote repository on =gitea.proton= via =tea=:
+Create the remote repository (e.g. on GitHub):
 
 #+begin_src sh :exports code
-tea repo create --name nix-hapi-provider-porkbun --description "Porkbun DNS provider for nix-hapi"
-git remote add origin ssh://git@gitea.proton:2222/$USER/nix-hapi-provider-porkbun.git
+git remote add origin git@github.com:LoganBarnett/nix-hapi-provider-porkbun.git
 git push -u origin main
 #+end_src
 
