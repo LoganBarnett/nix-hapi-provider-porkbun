@@ -24,7 +24,7 @@ pub struct DesiredRecord {
 
 fn default_ttl() -> FieldValue {
   FieldValue::Managed {
-    value: "600".to_string(),
+    value: serde_json::Value::String("600".to_string()),
   }
 }
 
@@ -215,11 +215,12 @@ fn resolve_fields_for_create(
     .content
     .resolve()
     .map_err(|e| ProviderError::OperationFailed(e.to_string()))?
-    .value()
-    .map(|s| s.to_string())
+    .as_str()
+    .map(String::from)
     .ok_or_else(|| {
       ProviderError::OperationFailed(
-        "content field must be Managed or Initial".to_string(),
+        "content field must be Managed or Initial with a string value"
+          .to_string(),
       )
     })?;
 
@@ -227,14 +228,14 @@ fn resolve_fields_for_create(
     .ttl
     .resolve()
     .map_err(|e| ProviderError::OperationFailed(e.to_string()))?
-    .value()
-    .map(|s| s.to_string())
+    .as_str()
+    .map(String::from)
     .unwrap_or_else(|| "600".to_string());
 
   let prio = rec.prio.as_ref().and_then(|fv| {
     fv.resolve()
       .ok()
-      .and_then(|rfv| rfv.value().map(|s| s.to_string()))
+      .and_then(|rfv| rfv.as_str().map(String::from))
   });
 
   Ok((content, ttl, prio))
@@ -266,8 +267,8 @@ fn effective_value(fv: &FieldValue, live: &str) -> String {
     return live.to_string();
   }
   resolved
-    .value()
-    .map(|s| s.to_string())
+    .as_str()
+    .map(String::from)
     .unwrap_or_else(|| live.to_string())
 }
 
@@ -282,7 +283,7 @@ fn managed_field_diffs(
   if let Ok(rfv) = desired.content.resolve() {
     let skip = rfv.is_initial() && !live.content.is_empty();
     if !skip && !rfv.is_unmanaged() {
-      if let Some(desired_val) = rfv.value() {
+      if let Some(desired_val) = rfv.as_str() {
         if desired_val != live.content {
           diffs.push(FieldDiff {
             field: "content".to_string(),
@@ -297,7 +298,7 @@ fn managed_field_diffs(
   if let Ok(rfv) = desired.ttl.resolve() {
     let skip = rfv.is_initial() && !live.ttl.is_empty();
     if !skip && !rfv.is_unmanaged() {
-      if let Some(desired_val) = rfv.value() {
+      if let Some(desired_val) = rfv.as_str() {
         if desired_val != live.ttl {
           diffs.push(FieldDiff {
             field: "ttl".to_string(),
@@ -314,7 +315,7 @@ fn managed_field_diffs(
       let live_prio = live.prio.clone().unwrap_or_default();
       let skip = rfv.is_initial() && !live_prio.is_empty();
       if !skip && !rfv.is_unmanaged() {
-        if let Some(desired_val) = rfv.value() {
+        if let Some(desired_val) = rfv.as_str() {
           if desired_val != live_prio {
             diffs.push(FieldDiff {
               field: "prio".to_string(),

@@ -32,7 +32,7 @@ impl PorkbunConfig {
 fn optional_field(config: &ResolvedConfig, field: &str) -> Option<String> {
   config
     .get(field)
-    .and_then(|fv| fv.value().map(|s| s.to_string()))
+    .and_then(|fv| fv.as_str().map(String::from))
 }
 
 fn required_field(
@@ -45,7 +45,7 @@ fn required_field(
       field: field.to_string(),
     })
     .and_then(|fv| {
-      fv.value().map(|s| s.to_string()).ok_or_else(|| {
+      fv.as_str().map(String::from).ok_or_else(|| {
         ProviderError::UnmanagedConfig {
           field: field.to_string(),
         }
