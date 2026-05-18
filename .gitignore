@@ -9,6 +9,9 @@
 # Ignore cargo generated build artifacts.
 target/
 
+# `nix build` symlinks its output here at the repository root.
+/result
+
 # Elm build cache.
 frontend/elm-stuff/
 

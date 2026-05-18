@@ -20,15 +20,147 @@ nix develop --command cargo build --workspace
 
 The resulting binary is =target/debug/nix-hapi-provider-porkbun=.
 
+* Configuration
+
+The flake exposes both =nixosModules.default= and =darwinModules.default=.
+Import the appropriate one and declare records under
+=services.nix-hapi-porkbun=:
+
+#+begin_src nix :exports code
+{
+  inputs = {
+    nixpkgs.url                       = "github:NixOS/nixpkgs/25.11";
+    nix-hapi.url                      = "github:LoganBarnett/nix-hapi";
+    nix-hapi-provider-porkbun.url     = "github:LoganBarnett/nix-hapi-provider-porkbun";
+  };
+
+  outputs = { nixpkgs, nix-hapi, nix-hapi-provider-porkbun, ... }: {
+    nixosConfigurations.dns-host = nixpkgs.lib.nixosSystem {
+      system  = "x86_64-linux";
+      modules = [
+        nix-hapi.nixosModules.default
+        nix-hapi-provider-porkbun.nixosModules.default
+
+        ({ ... }: {
+          services.nix-hapi.enable = true;
+
+          services.nix-hapi-porkbun = {
+            enable = true;
+
+            scopes."example.com" = {
+              # API credentials are secrets — never inline them as bare
+              # strings.  The mk*FromPath / mk*FromEnv helpers read the
+              # value at apply time so it does not land in the Nix store.
+              provider = {
+                api_key        = nix-hapi.lib.mkManagedFromPath
+                                   "/run/secrets/porkbun-api-key";
+                secret_api_key = nix-hapi.lib.mkManagedFromPath
+                                   "/run/secrets/porkbun-secret-key";
+              };
+
+              # Optional: jq predicates that exempt matching live records
+              # from deletion when absent from desired state.
+              ignore = [ ".type == \"NS\"" ];
+
+              records = {
+                www-a = {
+                  type    = "A";
+                  name    = "www";
+                  content = "1.2.3.4";
+                };
+
+                # Two A records on the same name are independent because
+                # the providerKey default is { type, name, content }.
+                www-a-backup = {
+                  type    = "A";
+                  name    = "www";
+                  content = "5.6.7.8";
+                };
+
+                mail-mx = {
+                  type    = "MX";
+                  name    = "@";          # `@` is the zone apex.
+                  content = "mail.example.com";
+                  prio    = "10";
+                };
+
+                apex-spf = {
+                  type    = "TXT";
+                  name    = "@";
+                  content = "v=spf1 mx ~all";
+                };
+
+                blog-cname = {
+                  type    = "CNAME";
+                  name    = "blog";
+                  content = "user.github.io";
+                };
+              };
+            };
+          };
+        })
+      ];
+    };
+  };
+}
+#+end_src
+
+The outer attribute name of each record (=www-a=, =mail-mx=, …) is a
+user-chosen label.  Record identity is the triple
+=(type, name, content)=, encoded in =__nixhapi.providerKey=, so multiple
+modules can contribute records that share a =(type, name)= without
+colliding.
+
+** Secret credentials
+
+=api_key= and =secret_api_key= must come from somewhere the Nix store
+cannot read in plaintext.  The supported patterns:
+
+- =nix-hapi.lib.mkManagedFromPath /run/secrets/...= — read from a path at
+  apply time (works with [[https://github.com/Mic92/sops-nix][sops-nix]], [[https://github.com/ryantm/agenix][agenix]], or any other secret tooling
+  that lands a file at a known path).
+- =nix-hapi.lib.mkManagedFromEnv "PORKBUN_API_KEY"= — read from an
+  environment variable visible to the reconciler process.
+
+Direct =mkManaged "rawvalue"= or a bare string will embed the credential
+in the world-readable Nix store and should not be used outside of test
+fixtures.
+
+* Renaming records
+
+The diff engine matches desired↔live by =__nixhapi.providerKey=.  Because
+the default key embeds =content=, changing =content= alone produces a
+=Delete= of the old record followed by an =Add= of the new — two API
+calls, no in-place edit.  This is correct for DNS (the resolver sees the
+change atomically once both ops complete) but costs an extra request.
+
+To execute a content change as a single =edit-by-id= against Porkbun,
+override =__nixhapi.providerKey= with a chain whose head is the new
+identity and whose tail is the prior identity:
+
+#+begin_src nix :exports code
+www-a = {
+  type    = "A";
+  name    = "www";
+  content = "5.6.7.8";
+
+  __nixhapi.providerKey = [
+    { type = "A"; name = "www"; content = "5.6.7.8"; }   # new head
+    { type = "A"; name = "www"; content = "1.2.3.4"; }   # prior key
+  ];
+};
+#+end_src
+
+The engine matches the head against live state, falls back to the prior
+key when the head is absent, and emits a =Rename= the provider executes
+as a Porkbun edit preserving the record's existing id.
+
 * Usage
 
 The provider binary is invoked as a subprocess by =nix-hapi=.  It reads
-newline-delimited JSON-RPC 2.0 requests from stdin and writes responses to
-stdout.  Log output goes to stderr.
-
-Configure nix-hapi to use this provider by pointing the provider path at the
-=nix-hapi-provider-porkbun= binary and supplying =api_key= and
-=secret_api_key= in the provider config block.
+newline-delimited JSON-RPC 2.0 requests from stdin and writes responses
+to stdout.  Log output goes to stderr.  Setting up the module above
+wires this into a NixOS or nix-darwin systemd unit automatically.
 
 * Contributing
 
