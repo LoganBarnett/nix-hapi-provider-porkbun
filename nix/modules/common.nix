@@ -103,7 +103,7 @@
               }
               // (
                 if config.content ? value
-                then {inherit (config.content) value;}
+                then {content = config.content.value;}
                 else
                   throw ''
                     Porkbun record ${config.type}/${config.name}: content has
